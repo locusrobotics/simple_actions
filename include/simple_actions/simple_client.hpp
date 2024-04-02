@@ -40,7 +40,8 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <simple_actions/utilities.hpp>
 
-namespace simple_actions {
+namespace simple_actions
+{
 /**
  * @brief Similar to rclcpp_action::ResultCode but also contains REJECTED
  */
@@ -51,24 +52,20 @@ enum ResultCode : int8_t { UNKNOWN, SUCCEEDED, CANCELED, ABORTED, REJECTED };
  * only one action at a time.
  */
 template <typename ACTION_TYPE>
-class SimpleActionClient {
- public:
-  using FeedbackCallback =
-      std::function<void(const typename ACTION_TYPE::Feedback&)>;
-  using ResultCallback = std::function<void(
-      const ResultCode&, const typename ACTION_TYPE::Result&)>;
+class SimpleActionClient
+{
+public:
+  using FeedbackCallback = std::function<void(const typename ACTION_TYPE::Feedback&)>;
+  using ResultCallback = std::function<void(const ResultCode&, const typename ACTION_TYPE::Result&)>;
 
-  SimpleActionClient(rclcpp::Node::SharedPtr node,
-                     const std::string& action_namespace,
-                     bool wait_for_server = true)
-      : node_(node),
-        LOGGER(node_->get_logger().get_child(action_namespace)),
-        action_namespace_(action_namespace) {
-    client_ =
-        rclcpp_action::create_client<ACTION_TYPE>(node_, action_namespace);
+  SimpleActionClient(rclcpp::Node::SharedPtr node, const std::string& action_namespace, bool wait_for_server = true)
+    : node_(node), LOGGER(node_->get_logger().get_child(action_namespace)), action_namespace_(action_namespace)
+  {
+    client_ = rclcpp_action::create_client<ACTION_TYPE>(node_, action_namespace);
 
     info_string_ = action_namespace + "/" + getName<ACTION_TYPE>();
-    if (wait_for_server) {
+    if (wait_for_server)
+    {
       waitForServer();
     }
     RCLCPP_DEBUG(LOGGER, "%s initialized", info_string_.c_str());
@@ -78,23 +75,28 @@ class SimpleActionClient {
    * @brief Waits indefinitely for the server to come up. Will print a message
    * after 10 seconds.
    */
-  void waitForServer(double seconds_to_wait = 10) {
+  void waitForServer(double seconds_to_wait = 10)
+  {
     bool printed = false;
     using namespace std::chrono_literals;
-    while (!client_->wait_for_action_server(
-               std::chrono::duration<double>(seconds_to_wait)) &&
-           rclcpp::ok()) {
-      if (!printed) {
+    while (!client_->wait_for_action_server(std::chrono::duration<double>(seconds_to_wait)) && rclcpp::ok())
+    {
+      if (!printed)
+      {
         RCLCPP_WARN(LOGGER, "Waiting for %s", info_string_.c_str());
         printed = true;
       }
     }
-    if (!rclcpp::ok()) {
+    if (!rclcpp::ok())
+    {
       exit(-1);
     }
-    if (printed) {
+    if (printed)
+    {
       RCLCPP_INFO(LOGGER, "Connected to %s", info_string_.c_str());
-    } else {
+    }
+    else
+    {
       RCLCPP_DEBUG(LOGGER, "%s connected", info_string_.c_str());
     }
   }
@@ -102,25 +104,22 @@ class SimpleActionClient {
   /**
    * @brief Send a goal, and return immediately
    */
-  void sendGoal(const typename ACTION_TYPE::Goal& goal_msg,
-                ResultCallback resultCB = nullptr,
-                FeedbackCallback feedbackCB = nullptr) {
+  void sendGoal(const typename ACTION_TYPE::Goal& goal_msg, ResultCallback resultCB = nullptr,
+                FeedbackCallback feedbackCB = nullptr)
+  {
     using std::placeholders::_1;
     using std::placeholders::_2;
-    typename rclcpp_action::Client<ACTION_TYPE>::SendGoalOptions
-        send_goal_options;
-    send_goal_options.goal_response_callback =
-        std::bind(&SimpleActionClient::goalResponseCallback, this, _1);
+    typename rclcpp_action::Client<ACTION_TYPE>::SendGoalOptions send_goal_options;
+    send_goal_options.goal_response_callback = std::bind(&SimpleActionClient::goalResponseCallback, this, _1);
 
-    if (feedbackCB) {
+    if (feedbackCB)
+    {
       feedback_cb_ = feedbackCB;
-      send_goal_options.feedback_callback =
-          std::bind(&SimpleActionClient::feedbackCallback, this, _1, _2);
+      send_goal_options.feedback_callback = std::bind(&SimpleActionClient::feedbackCallback, this, _1, _2);
     }
 
     result_cb_ = resultCB;
-    send_goal_options.result_callback =
-        std::bind(&SimpleActionClient::resultCallback, this, _1);
+    send_goal_options.result_callback = std::bind(&SimpleActionClient::resultCallback, this, _1);
     client_->async_send_goal(goal_msg, send_goal_options);
 
     RCLCPP_DEBUG(LOGGER, "%s sent goal", info_string_.c_str());
@@ -131,30 +130,30 @@ class SimpleActionClient {
    *
    * @note: Does not return the ResultCode
    */
-  typename ACTION_TYPE::Result& execute(
-      const typename ACTION_TYPE::Goal& goal_msg,
-      FeedbackCallback feedbackCB = nullptr, bool spin_locally = true) {
+  typename ACTION_TYPE::Result& execute(const typename ACTION_TYPE::Goal& goal_msg,
+                                        FeedbackCallback feedbackCB = nullptr, bool spin_locally = true)
+  {
     using std::placeholders::_1;
     using std::placeholders::_2;
     execute_result_recieved_ = false;
-    sendGoal(
-        goal_msg,
-        std::bind(&SimpleActionClient::executeResultCallback, this, _1, _2),
-        feedbackCB);
-    while (!execute_result_recieved_ && rclcpp::ok()) {
-      if (spin_locally) {
+    sendGoal(goal_msg, std::bind(&SimpleActionClient::executeResultCallback, this, _1, _2), feedbackCB);
+    while (!execute_result_recieved_ && rclcpp::ok())
+    {
+      if (spin_locally)
+      {
         rclcpp::spin_some(node_);
       }
     }
     return execute_result_;
   }
 
- protected:
-  void goalResponseCallback(
-      typename rclcpp_action::ClientGoalHandle<ACTION_TYPE>::SharedPtr
-          goal_handle) {
-    if (!goal_handle) {
-      if (result_cb_) {
+protected:
+  void goalResponseCallback(typename rclcpp_action::ClientGoalHandle<ACTION_TYPE>::SharedPtr goal_handle)
+  {
+    if (!goal_handle)
+    {
+      if (result_cb_)
+      {
         result_cb_(ResultCode::REJECTED, default_result_);
       }
       RCLCPP_DEBUG(LOGGER, "%s goal rejected :(", info_string_.c_str());
@@ -163,40 +162,43 @@ class SimpleActionClient {
     RCLCPP_DEBUG(LOGGER, "%s goal accepted :)", info_string_.c_str());
   }
 
-  void feedbackCallback(
-      typename rclcpp_action::ClientGoalHandle<ACTION_TYPE>::SharedPtr,
-      const std::shared_ptr<const typename ACTION_TYPE::Feedback> feedback) {
+  void feedbackCallback(typename rclcpp_action::ClientGoalHandle<ACTION_TYPE>::SharedPtr,
+                        const std::shared_ptr<const typename ACTION_TYPE::Feedback> feedback)
+  {
     RCLCPP_DEBUG(LOGGER, "%s got feedback", info_string_.c_str());
-    if (feedback_cb_) {
+    if (feedback_cb_)
+    {
       feedback_cb_(*feedback);
     }
   }
 
-  void resultCallback(const typename rclcpp_action::ClientGoalHandle<
-                      ACTION_TYPE>::WrappedResult& result) {
+  void resultCallback(const typename rclcpp_action::ClientGoalHandle<ACTION_TYPE>::WrappedResult& result)
+  {
     RCLCPP_DEBUG(LOGGER, "%s got result", info_string_.c_str());
-    if (result_cb_) {
+    if (result_cb_)
+    {
       ResultCode code;
       // Translate from rclcpp_action::ResultCode to simple_actions::ResultCode
-      switch (result.code) {
-        case rclcpp_action::ResultCode::SUCCEEDED:
-          code = ResultCode::SUCCEEDED;
-          break;
-        case rclcpp_action::ResultCode::ABORTED:
-          code = ResultCode::ABORTED;
-          break;
-        case rclcpp_action::ResultCode::CANCELED:
-          code = ResultCode::CANCELED;
-          break;
-        default:
-          code = ResultCode::UNKNOWN;
+      switch (result.code)
+      {
+      case rclcpp_action::ResultCode::SUCCEEDED:
+        code = ResultCode::SUCCEEDED;
+        break;
+      case rclcpp_action::ResultCode::ABORTED:
+        code = ResultCode::ABORTED;
+        break;
+      case rclcpp_action::ResultCode::CANCELED:
+        code = ResultCode::CANCELED;
+        break;
+      default:
+        code = ResultCode::UNKNOWN;
       }
       result_cb_(code, *(result.result));
     }
   }
 
-  void executeResultCallback(ResultCode,
-                             const typename ACTION_TYPE::Result& result) {
+  void executeResultCallback(ResultCode, const typename ACTION_TYPE::Result& result)
+  {
     execute_result_ = result;
     execute_result_recieved_ = true;
   }

@@ -40,7 +40,8 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <simple_actions/utilities.hpp>
 
-namespace simple_actions {
+namespace simple_actions
+{
 /**
  * @brief Simple wrapper around rclcpp action server for easier usage. Assumes
  * only one action at a time.
@@ -49,77 +50,86 @@ namespace simple_actions {
  * object
  */
 template <typename ACTION_TYPE>
-class SimpleActionServer {
- public:
-  using ExecuteCallback = std::function<bool(const typename ACTION_TYPE::Goal&,
-                                             typename ACTION_TYPE::Result&)>;
+class SimpleActionServer
+{
+public:
+  using ExecuteCallback = std::function<bool(const typename ACTION_TYPE::Goal&, typename ACTION_TYPE::Result&)>;
 
-  SimpleActionServer(rclcpp::Node::SharedPtr node,
-                     const std::string& action_namespace,
-                     ExecuteCallback execute_cb)
-      : node_(node), LOGGER(node_->get_logger().get_child(action_namespace)) {
+  SimpleActionServer(rclcpp::Node::SharedPtr node, const std::string& action_namespace, ExecuteCallback execute_cb)
+    : node_(node), LOGGER(node_->get_logger().get_child(action_namespace))
+  {
     using namespace std::placeholders;
     info_string_ = action_namespace + "/" + getName<ACTION_TYPE>();
     execute_cb_ = execute_cb;
-    server_ = rclcpp_action::create_server<ACTION_TYPE>(
-        node_, action_namespace,
-        std::bind(&SimpleActionServer::handleGoal, this, _1, _2),
-        std::bind(&SimpleActionServer::handleCancel, this, _1),
-        std::bind(&SimpleActionServer::handleAccepted, this, _1));
+    server_ = rclcpp_action::create_server<ACTION_TYPE>(node_, action_namespace,
+                                                        std::bind(&SimpleActionServer::handleGoal, this, _1, _2),
+                                                        std::bind(&SimpleActionServer::handleCancel, this, _1),
+                                                        std::bind(&SimpleActionServer::handleAccepted, this, _1));
     RCLCPP_WARN(LOGGER, "%s initialized", info_string_.c_str());
   }
 
   /**
    * @brief Publishes feedback on the active action
    */
-  void publishFeedback(typename ACTION_TYPE::Feedback::SharedPtr feedback) {
+  void publishFeedback(typename ACTION_TYPE::Feedback::SharedPtr feedback)
+  {
     goal_handle_->publish_feedback(feedback);
     RCLCPP_DEBUG(LOGGER, "%s published feedback", info_string_.c_str());
   }
 
-  bool isActive() const { return goal_handle_->is_active(); }
+  bool isActive() const
+  {
+    return goal_handle_->is_active();
+  }
 
-  bool isCanceling() const { return goal_handle_->is_canceling(); }
+  bool isCanceling() const
+  {
+    return goal_handle_->is_canceling();
+  }
 
-  bool isExecuting() const { return goal_handle_->is_executing(); }
+  bool isExecuting() const
+  {
+    return goal_handle_->is_executing();
+  }
 
- protected:
-  using GoalHandle =
-      std::shared_ptr<rclcpp_action::ServerGoalHandle<ACTION_TYPE>>;
+protected:
+  using GoalHandle = std::shared_ptr<rclcpp_action::ServerGoalHandle<ACTION_TYPE>>;
 
-  rclcpp_action::GoalResponse handleGoal(
-      const rclcpp_action::GoalUUID&,
-      std::shared_ptr<const typename ACTION_TYPE::Goal>) {
+  rclcpp_action::GoalResponse handleGoal(const rclcpp_action::GoalUUID&,
+                                         std::shared_ptr<const typename ACTION_TYPE::Goal>)
+  {
     RCLCPP_DEBUG(LOGGER, "%s got a goal request", info_string_.c_str());
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
   }
 
-  rclcpp_action::CancelResponse handleCancel(const GoalHandle) {
+  rclcpp_action::CancelResponse handleCancel(const GoalHandle)
+  {
     RCLCPP_DEBUG(LOGGER, "%s got a cancel request", info_string_.c_str());
     return rclcpp_action::CancelResponse::ACCEPT;
   }
 
-  void handleAccepted(const GoalHandle goal_handle) {
-    RCLCPP_DEBUG(LOGGER, "%s is starting an execution thread",
-                 info_string_.c_str());
+  void handleAccepted(const GoalHandle goal_handle)
+  {
+    RCLCPP_DEBUG(LOGGER, "%s is starting an execution thread", info_string_.c_str());
     // this needs to return quickly to avoid blocking the executor, so spin up a
     // new thread
-    std::thread{
-        std::bind(&SimpleActionServer::execute, this, std::placeholders::_1),
-        goal_handle}
-        .detach();
+    std::thread{std::bind(&SimpleActionServer::execute, this, std::placeholders::_1), goal_handle}.detach();
   }
 
-  void execute(GoalHandle goal_handle) {
+  void execute(GoalHandle goal_handle)
+  {
     RCLCPP_DEBUG(LOGGER, "%s is beginning execution", info_string_.c_str());
     goal_handle_ = goal_handle;
     const auto goal = goal_handle->get_goal();
     auto result = std::make_shared<typename ACTION_TYPE::Result>();
 
     bool success;
-    try {
+    try
+    {
       success = execute_cb_(*goal, *result);
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception& ex)
+    {
       success = false;
       RCLCPP_ERROR(LOGGER,
                    "An uncaught exception has occurred while trying to execute "
@@ -127,11 +137,16 @@ class SimpleActionServer {
                    info_string_.c_str(), ex.what());
     }
 
-    if (success) {
+    if (success)
+    {
       goal_handle->succeed(result);
-    } else if (goal_handle_->is_canceling()) {
+    }
+    else if (goal_handle_->is_canceling())
+    {
       goal_handle->canceled(result);
-    } else {
+    }
+    else
+    {
       goal_handle->abort(result);
     }
     RCLCPP_DEBUG(LOGGER, "%s has finished execution", info_string_.c_str());
