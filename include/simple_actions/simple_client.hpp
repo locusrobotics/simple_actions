@@ -75,11 +75,11 @@ public:
    * @brief Waits indefinitely for the server to come up. Will print a message
    * after 10 seconds.
    */
-  void waitForServer(double seconds_to_wait = 10)
+  void waitForServer()
   {
     bool printed = false;
     using namespace std::chrono_literals;
-    while (!client_->wait_for_action_server(std::chrono::duration<double>(seconds_to_wait)) && rclcpp::ok())
+    while (!client_->wait_for_action_server(10s) && rclcpp::ok())
     {
       if (!printed)
       {
@@ -99,6 +99,14 @@ public:
     {
       RCLCPP_DEBUG(LOGGER, "%s connected", info_string_.c_str());
     }
+  }
+
+  /**
+   * @brief Waits for the server to come up. Will fail after the set timeout
+   */
+  bool waitForServer(double seconds_to_wait)
+  {
+    return client_->wait_for_action_server(std::chrono::duration<double>(seconds_to_wait));
   }
 
   /**
