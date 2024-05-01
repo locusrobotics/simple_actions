@@ -155,6 +155,11 @@ public:
     return execute_result_;
   }
 
+  ResultCode get_latest_result_code()
+  {
+    return latest_result_code_;
+  }
+
 protected:
   void goalResponseCallback(typename rclcpp_action::ClientGoalHandle<ACTION_TYPE>::SharedPtr goal_handle)
   {
@@ -205,8 +210,9 @@ protected:
     }
   }
 
-  void executeResultCallback(ResultCode, const typename ACTION_TYPE::Result& result)
+  void executeResultCallback(ResultCode code, const typename ACTION_TYPE::Result& result)
   {
+    latest_result_code_ = code;
     execute_result_ = result;
     execute_result_recieved_ = true;
   }
@@ -214,6 +220,7 @@ protected:
   typename rclcpp_action::Client<ACTION_TYPE>::SharedPtr client_;
   typename ACTION_TYPE::Result default_result_, execute_result_;
   bool execute_result_recieved_;
+  ResultCode latest_result_code_;
 
   FeedbackCallback feedback_cb_;
   ResultCallback result_cb_;
